@@ -9,6 +9,74 @@ group by 1;
 
 -- Which customer used a discount but still spent more than average amount
 
+select customer_id from customer_trend
+where discount_applied = 'yes' and purchase_amount>=(select avg(purchase_amount) from customer_trend);
+
+-- Top 5 products with highest average review rating
+select distinct(item_purchased) from customer_trend;
+select item_purchased,round(avg(review_rating),2) as avg_rating
+from customer_trend
+group by item_purchased
+order by 2 desc
+limit 5;
+
+-- Compare the average Purchase Amounts between Standard and Express Shipping. 
+select shipping_type ,round(avg(purchase_amount),2) as avg_purchase_amt_shipping
+from customer_trend
+group by 1
+order by 2 desc;
+
+-- Do subscribed customers spend more? Compare average spend and total revenue between subscribers and non-subscribers.
+select subscription_status,count(customer_id) as total_no,
+round(avg(purchase_amount),2) as avg_spent,sum(purchase_amount) as tot_rev
+from customer_trend
+group by 1
+order by 3,4;
+
+-- Which 5 products have the highest percentage of purchases with discounts applied?
+
+select item_purchased,round(sum(case when discount_applied='yes' then 1 else 0 end)*100/count(item_purchased),2) as Percentage
+from customer_trend
+group by item_purchased
+order by 2 desc
+limit 5;
+
+-- Segment customers into New, Returning, and Loyal based on their total number of previous purchases, and show the count of each segment.
+with cte as
+(select customer_id,previous_purchases,
+case when previous_purchases=1 then 'New'
+	when previous_purchases between 2 and 10 then 'Returning'
+    else 'Loyal' end as Recurrence
+from customer_trend)
+select recurrence,count(customer_id)
+from cte
+group by 1;
+
+-- What are the top 3 most purchased products within each category? 
+with items_count as
+(select category,item_purchased,count(customer_id) as cnt
+from customer_trend
+group by 1,2),
+top_3_items as
+(select * ,rank()over(partition by category order by cnt desc ) as items_rank
+from items_count)
+select * from top_3_items
+where items_rank<=3;
+
+-- Are customers who are repeat buyers (more than 5 previous purchases) also likely to subscribe?
+select round(count(customer_id)*100/(select count(subscription_status) from customer_trend) ,2) as perc_subscribers ,
+subscription_status
+from customer_trend
+where previous_purchases>=5
+group by 2;
+
+-- What is the revenue contribution of each age group? 
+
+select age_category,sum(purchase_amount) as rev
+from customer_trend
+group by 1
+order by 2 desc;
+
 
 
 
